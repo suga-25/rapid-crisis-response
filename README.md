@@ -41,12 +41,15 @@ Integrated via the Embed API to provide:
 
 ## 🧠 Technical Architecture
 
+```mermaid
 graph TD
     A[Manager Dashboard] -->|Write Event| B(Firebase Realtime DB)
     B -->|Sync Status| C[Guest/Staff View]
     B -->|Sync Status| D[Public Screen]
     B -->|Sync Status| E[Rescue Tactical View]
     C -->|Report Incident| B
+
+---
 
 ## 🚀 Live Prototype
 The system is fully deployed on Google Firebase. You can access the different modules via the links below:
