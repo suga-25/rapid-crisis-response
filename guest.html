@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guest Safety Portal</title>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --bg-secure: #0f172a;
+            --bg-standby: #020617;
+            --bg-evacuate: #450a0a;
+            --card-dark: #1e293b;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            background-color: var(--bg-secure); 
+            color: white; 
+            margin: 0; 
+            padding: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            transition: background-color 0.5s ease;
+        }
+
+        /* Floor Badge at Top */
+        .header-location {
+            position: absolute;
+            top: 20px;
+            background: #ffa500;
+            color: black;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        /* Main Status Card */
+        .status-container {
+            background: rgba(15, 23, 42, 0.9);
+            padding: 40px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        #statusText { font-size: 3.5rem; font-weight: 900; margin: 0; text-transform: uppercase; }
+        #subText { font-size: 1.2rem; color: #cbd5e1; margin: 20px 0; }
+
+        /* Route Info (Safe/Avoid) */
+        .route-info { display: none; margin-top: 20px; text-align: left; }
+        
+        .route-card {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 8px solid;
+        }
+        .safe { background: #064e3b; border-color: #10b981; }
+        .avoid { background: #450a0a; border-color: #ef4444; }
+
+        .label { font-size: 0.7rem; font-weight: bold; text-transform: uppercase; opacity: 0.8; }
+        .location-name { font-size: 1.8rem; font-weight: bold; margin-top: 5px; }
+
+        /* Warning Footer inside card */
+        .warning-footer {
+            margin-top: 30px;
+            color: #ffa500;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+
+        /* Bottom Floor Navigation */
+        .floor-nav { position: absolute; bottom: 30px; display: flex; gap: 10px; }
+        .floor-btn { 
+            background: #334155; border: none; color: white; 
+            padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer;
+        }
+        .floor-btn:hover { background: #475569; }
+
+        /* State Changes */
+        .state-evacuate { background-color: var(--bg-evacuate); }
+        .state-standby { background-color: var(--bg-standby); }
+    </style>
+</head>
+<body id="mainBody">
+
+    <div class="header-location">LOCATION: FLOOR <span id="displayFloor">1</span></div>
+
+    <div class="status-container">
+        <h1 id="statusText">System Secure</h1>
+        <p id="subText">The building is currently being monitored. No actions are required at this time.</p>
+
+        <div id="routeSection" class="route-info">
+            <div class="route-card safe">
+                <div class="label">USE SAFE EXIT</div>
+                <div id="safeRoute" class="location-name">West Staircase</div>
+            </div>
+            <div class="route-card avoid">
+                <div class="label">AVOID AREA</div>
+                <div id="avoidArea" class="location-name">East Wing</div>
+            </div>
+        </div>
+
+        <div class="warning-footer" id="footerWarning">
+            </div>
+    </div>
+
+    <div class="floor-nav">
+        <button class="floor-btn" onclick="window.location.search='?floor=1'">FLOOR 1</button>
+        <button class="floor-btn" onclick="window.location.search='?floor=2'">FLOOR 2</button>
+        <button class="floor-btn" onclick="window.location.search='?floor=3'">FLOOR 3</button>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let myFloor = urlParams.get('floor') || "1";
+        document.getElementById('displayFloor').innerText = myFloor;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAdKninhjD3zVfWYCzBIAuyzXNZdXG0Je0",
+            authDomain: "rapidcrisisresponse-b7231.firebaseapp.com",
+            databaseURL: "https://rapidcrisisresponse-b7231-default-rtdb.firebaseio.com",
+            projectId: "rapidcrisisresponse-b7231",
+            appId: "1:103621171944:web:f4bd8389b7e5a62540075d"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        db.ref('/').on('value', (snap) => {
+            const data = snap.val();
+            const body = document.getElementById('mainBody');
+            const statusText = document.getElementById('statusText');
+            const subText = document.getElementById('subText');
+            const routes = document.getElementById('routeSection');
+            const footer = document.getElementById('footerWarning');
+
+            if (data.active) {
+                if (data.incident_floor == myFloor) {
+                    // EVACUATE STATE
+                    body.className = 'state-evacuate';
+                    statusText.innerText = "EVACUATE";
+                    statusText.style.color = "white";
+                    subText.innerText = `Confirmed incident on Floor ${myFloor}.`;
+                    routes.style.display = 'block';
+                    footer.innerHTML = "⚠️ FOLLOW STAFF INSTRUCTIONS IMMEDIATELY";
+                    
+                    // Update Routes from Firebase
+                    document.getElementById('safeRoute').innerText = data.safe_route || "West Staircase";
+                    document.getElementById('avoidArea').innerText = data.blocked_route || "East Wing";
+                } else {
+                    // STAND BY STATE
+                    body.className = 'state-standby';
+                    statusText.innerText = "STAND BY";
+                    statusText.style.color = "#38bdf8";
+                    subText.innerText = `Incident detected on Floor ${data.incident_floor}. Please stay at your location.`;
+                    routes.style.display = 'none';
+                    footer.innerHTML = "⚠️ FOLLOW STAFF INSTRUCTIONS IMMEDIATELY";
+                }
+            } else {
+                // SECURE STATE
+                body.className = '';
+                statusText.innerText = "System Secure";
+                statusText.style.color = "white";
+                subText.innerText = "The building is currently being monitored. No actions are required at this time.";
+                routes.style.display = 'none';
+                footer.innerHTML = "";
+            }
+        });
+    </script>
+</body>
+</html>

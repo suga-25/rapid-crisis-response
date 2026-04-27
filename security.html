@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tactical Security Panel</title>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-auth-compat.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #121212; color: white; padding: 20px; text-align: center; }
+        .map-container { background: #1e1e1e; padding: 20px; border-radius: 15px; display: inline-block; border: 1px solid #333; margin-bottom: 20px; }
+        .floor-block { width: 120px; height: 40px; margin: 5px auto; border: 2px solid #444; display: flex; align-items: center; justify-content: center; font-weight: bold; position: relative; }
+        
+        /* Status Colors */
+        .f-evac { background: #7f1d1d; border-color: #ef4444; animation: blink 1s infinite; }
+        .f-confirmed { background: #1e3a8a; border-color: #3b82f6; color: #93c5fd; } 
+        .f-secure { background: #064e3b; border-color: #10b981; color: #10b981; }
+
+        .med-alert-dot { position: absolute; right: -15px; top: 10px; width: 12px; height: 12px; background: #e11d48; border-radius: 50%; box-shadow: 0 0 10px #e11d48; display: none; }
+
+        .card { background: #1a1a1a; padding: 15px; border-radius: 10px; margin: 10px auto; max-width: 500px; border-left: 5px solid #ffa000; }
+        
+        /* Route Buttons & Active State */
+        .btn-route { background: #ffa000; color: black; border: none; padding: 12px; margin: 5px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 45%; transition: 0.3s; }
+        .btn-route.active { 
+            background: #b45309 !important; 
+            color: white; 
+            border: 2px solid white; 
+            box-shadow: 0 0 15px rgba(255, 160, 0, 0.4); 
+        }
+
+        #current-routes { 
+            background: rgba(255, 160, 0, 0.1); 
+            padding: 10px; 
+            border-radius: 5px; 
+            border: 1px dashed #ffa000; 
+            margin-top: 10px; 
+            font-weight: bold; 
+            line-height: 1.5;
+        }
+        
+        .btn-confirm { background: #2563eb; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.8em; }
+        .btn-reset { background: #059669; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 20px; }
+
+        @keyframes blink { 50% { opacity: 0.4; } }
+        .med-text { color: #f87171; font-size: 0.8em; font-weight: bold; display: block; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <h2>👮 Security Tactical View</h2>
+    
+    <div class="map-container">
+        <h4 style="color:#aaa;">LIVE BUILDING MAP</h4>
+        <div id="map_f3" class="floor-block">F3 <div id="med_dot_3" class="med-alert-dot"></div></div>
+        <div id="map_f2" class="floor-block">F2 <div id="med_dot_2" class="med-alert-dot"></div></div>
+        <div id="map_f1" class="floor-block">F1 <div id="med_dot_1" class="med-alert-dot"></div></div>
+    </div>
+
+    <div class="card">
+        <h3>🚧 Global Route Control</h3>
+        <p style="font-size: 0.8rem; color: #aaa;">Click to block an exit across ALL floors</p>
+        <button id="btn-east" class="btn-route" onclick="updateGlobalRoute('East Wing', 'West Staircase')">BLOCK EAST</button>
+        <button id="btn-west" class="btn-route" onclick="updateGlobalRoute('West Staircase', 'East Wing')">BLOCK WEST</button>
+        <div id="current-routes">Waiting for data...</div>
+    </div>
+
+    <div id="floor-list"></div>
+
+    <button id="master-reset" class="btn-reset" style="display:none;" onclick="resetToNormal()">ALL FLOORS EVACUATED - RESET SYSTEM</button>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAdKninhjD3zVfWYCzBIAuyzXNZdXG0Je0",
+            authDomain: "rapidcrisisresponse-b7231.firebaseapp.com",
+            databaseURL: "https://rapidcrisisresponse-b7231-default-rtdb.firebaseio.com",
+            projectId: "rapidcrisisresponse-b7231",
+            appId: "1:103621171944:web:f4bd8389b7e5a62540075d"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        firebase.auth().signInAnonymously();
+
+        db.ref('/').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if(!data || !data.floors) return;
+            
+            // --- ROUTE VISUAL FEEDBACK (using Floor 3 as the reference for the buttons) ---
+            const referenceFloor = data.floors[3];
+            const eastBtn = document.getElementById('btn-east');
+            const westBtn = document.getElementById('btn-west');
+            const routeDisplay = document.getElementById('current-routes');
+
+            if (data.active) {
+                const blocked = referenceFloor.blocked_exit || "NONE";
+                const safe = referenceFloor.safe_exit || "WAITING";
+
+                eastBtn.classList.toggle('active', blocked === 'East Wing');
+                westBtn.classList.toggle('active', blocked === 'West Staircase');
+
+                routeDisplay.innerHTML = `
+                    <span style="color: #ef4444;">🚫 BLOCKED: ${blocked.toUpperCase()}</span><br>
+                    <span style="color: #10b981;">✅ SAFE ROUTE: ${safe.toUpperCase()}</span>
+                `;
+            } else {
+                eastBtn.classList.remove('active');
+                westBtn.classList.remove('active');
+                routeDisplay.innerText = "SYSTEM SECURE";
+            }
+
+            // --- FLOOR LIST & MAP ---
+            let listHtml = "";
+            let allConfirmed = true;
+
+            [3, 2, 1].forEach(f => {
+                const floorData = data.floors[f];
+                const status = floorData.status;
+                const medical = floorData.medical_condition;
+
+                if (status !== "Evacuated" && status !== "Normal") allConfirmed = false;
+
+                const mapEl = document.getElementById(`map_f${f}`);
+                const dotEl = document.getElementById(`med_dot_${f}`);
+                
+                if (status === "Evacuating" || status === "Standby") {
+                    mapEl.className = "floor-block f-evac";
+                } else if (status === "Evacuated") {
+                    mapEl.className = "floor-block f-confirmed";
+                } else {
+                    mapEl.className = "floor-block f-secure";
+                }
+
+                dotEl.style.display = (medical === "MEDICAL ACTIVE") ? "block" : "none";
+
+                listHtml += `
+                <div class="card" style="display:flex; flex-direction:column; align-items:flex-start;">
+                    <div style="display:flex; justify-content: space-between; width: 100%; align-items: center;">
+                        <span><strong>FLOOR ${f}</strong>: ${status}</span>
+                        ${(status === "Evacuating" || status === "Standby") ? 
+                            `<button class="btn-confirm" onclick="confirmEvacuation(${f})">Confirm Evacuation</button>` : 
+                            `<span style="color:#60a5fa;">✓ EVACUATION COMPLETE</span>`}
+                    </div>
+                    ${medical === "MEDICAL ACTIVE" ? `<span class="med-text">🚨 MEDICAL ALERT: AID DISPATCHED</span>` : ''}
+                </div>`;
+            });
+
+            document.getElementById('floor-list').innerHTML = listHtml;
+            document.getElementById('master-reset').style.display = (data.active && allConfirmed) ? "inline-block" : "none";
+        });
+
+        // SECURITY UPDATES ROUTES FOR THE ENTIRE BUILDING
+        function updateGlobalRoute(blocked, safe) {
+            const updates = {};
+            [1, 2, 3].forEach(f => {
+                updates[`floors/${f}/blocked_exit`] = blocked;
+                updates[`floors/${f}/safe_exit`] = safe;
+            });
+            db.ref().update(updates);
+        }
+
+        function confirmEvacuation(f) {
+            db.ref(`floors/${f}`).update({ 
+                status: "Evacuated",
+                medical_condition: "Normal"
+            });
+        }
+
+        function resetToNormal() {
+            const updates = { active: false, incident_floor: "0" };
+            [1,2,3].forEach(f => {
+                updates[`floors/${f}/status`] = "Normal";
+                updates[`floors/${f}/blocked_exit`] = "";
+                updates[`floors/${f}/safe_exit`] = "";
+                updates[`floors/${f}/medical_condition`] = "Normal";
+            });
+            db.ref('/').update(updates);
+        }
+    </script>
+</body>
+</html>

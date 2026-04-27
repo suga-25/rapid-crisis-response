@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rescue Tactical View | Live Response Hub</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
+    
+    <style>
+        body { background-color: #0b0f1a; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
+        
+        .header { text-align: center; padding: 20px; border-bottom: 1px solid #1e293b; margin-bottom: 30px; }
+        
+        #map-box { 
+            width: 100%; max-width: 1000px; height: 180px; 
+            margin: 0 auto 30px auto; border-radius: 8px; 
+            background: #161b22; border: 1px solid #30363d;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #8b949e; letter-spacing: 2px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .main-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 25px; max-width: 1200px; margin: 0 auto; }
+        
+        .panel { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 25px; min-height: 450px; }
+        
+        h2 { font-size: 0.85rem; color: #8b949e; text-transform: uppercase; margin-bottom: 25px; border-left: 4px solid #58a6ff; padding-left: 12px; letter-spacing: 1px; }
+
+        /* Building Status Map Styles */
+        .status-row { 
+            padding: 15px; 
+            border-radius: 6px; 
+            margin-bottom: 12px; 
+            font-weight: 600; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: #0d1117;
+            border-left: 4px solid #30363d;
+        }
+
+        /* Specific Status Border Colors */
+        .status-evacuated { border-left-color: #f85149; background: rgba(248, 81, 73, 0.05); }
+        .status-medical { border-left-color: #58a6ff; background: rgba(88, 166, 255, 0.05); }
+        .status-standby { border-left-color: #30363d; opacity: 0.7; }
+
+        .floor-label { font-size: 0.9rem; color: #c9d1d9; }
+
+        /* Badges */
+        .badge-container { display: flex; gap: 8px; }
+        .badge { 
+            font-size: 0.65rem; 
+            padding: 4px 10px; 
+            border-radius: 4px; 
+            text-transform: uppercase; 
+            font-weight: 800; 
+            white-space: nowrap;
+        }
+        .alert-origin { background: #fff; color: #f85149; border: 1px solid #f85149; }
+        .medical-badge { background: #2563eb; color: #fff; }
+
+        /* Dispatch Alert Styles */
+        .alert-box { padding: 20px; border-radius: 6px; margin-bottom: 15px; border-left: 6px solid white; background: #0d1117; }
+        .fire-border { border-color: #f85149; box-shadow: 0 4px 15px rgba(248, 81, 73, 0.2); }
+        .police-border { border-color: #58a6ff; box-shadow: 0 4px 15px rgba(88, 166, 255, 0.2); }
+        .medical-border { border-color: #3fb950; box-shadow: 0 4px 15px rgba(63, 185, 80, 0.2); }
+        
+        .alert-title { display: flex; justify-content: space-between; font-weight: bold; font-size: 1.1rem; margin-bottom: 8px; }
+        .status-tag { font-size: 0.65rem; padding: 3px 8px; border-radius: 4px; background: rgba(255,255,255,0.15); color: #fff; text-transform: uppercase; }
+        
+        .empty-msg { color: #484f58; text-align: center; margin-top: 120px; font-style: italic; font-size: 0.95rem; }
+        
+        #floor-display { color: #58a6ff; font-size: 1.4rem; margin-left: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1 style="margin:0; letter-spacing: 3px;">RESCUE TACTICAL VIEW</h1>
+        <div style="color: #58a6ff; font-size: 0.85rem; margin-top: 5px; text-transform: uppercase;">Command Operations • Site Alpha Monitor</div>
+    </div>
+
+    <div id="map-box">
+        INCIDENT ORIGIN: <span id="floor-display">NONE</span>
+    </div>
+
+    <div class="main-grid">
+        <div class="panel">
+            <h2>Building Status Map</h2>
+            <div id="status-map-list"></div>
+        </div>
+
+        <div class="panel">
+            <h2>Authorized Dispatch Units</h2>
+            <div id="dispatch-list"></div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAdKninhjD3zVfWYCzBIAuyzXNZdXG0Je0",
+            authDomain: "rapidcrisisresponse-b7231.firebaseapp.com",
+            databaseURL: "https://rapidcrisisresponse-b7231-default-rtdb.firebaseio.com",
+            projectId: "rapidcrisisresponse-b7231",
+            appId: "1:103621171944:web:f4bd8389b7e5a62540075d"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        db.ref('/').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) syncTacticalView(data);
+        });
+
+        function syncTacticalView(data) {
+            const statusDiv = document.getElementById('status-map-list');
+            const dispatchDiv = document.getElementById('dispatch-list');
+            const floorSpan = document.getElementById('floor-display');
+
+            statusDiv.innerHTML = "";
+            dispatchDiv.innerHTML = "";
+            
+            floorSpan.innerText = data.active ? `FLOOR ${data.incident_floor}` : "STABLE";
+
+            // --- 1. RENDER BUILDING STATUS MAP ---
+            if (data.floors) {
+                // Loop through floors 3 down to 1
+                for (let f = 3; f >= 1; f--) {
+                    const fData = data.floors[f] || {};
+                    const status = (fData.status || "").toLowerCase();
+                    const med = fData.medical_condition || "";
+                    
+                    let rowClass = "status-standby";
+                    let badgeHTML = "";
+
+                    // CHECK 1: ALERT ORIGIN (Fire/Evacuation)
+                    if (status === "evacuated" || status === "evacuating") {
+                        rowClass = "status-evacuated";
+                        badgeHTML += `<span class="badge alert-origin">🔥 ALERT ORIGIN</span>`;
+                    }
+
+                    // CHECK 2: MEDICAL EMERGENCY (Independent Check)
+                    if (med === "MEDICAL ACTIVE") {
+                        // If no fire on this floor, use medical styling for the row
+                        if (rowClass === "status-standby") rowClass = "status-medical";
+                        badgeHTML += `<span class="badge medical-badge">🚑 MEDICAL EMERGENCY</span>`;
+                    }
+
+                    // Append the row with all active badges
+                    statusDiv.innerHTML += `
+                        <div class="status-row ${rowClass}">
+                            <span class="floor-label">FLOOR ${f} - ${status.toUpperCase() || 'STANDBY'}</span>
+                            <div class="badge-container">${badgeHTML}</div>
+                        </div>`;
+                }
+            }
+
+            // --- 2. RENDER DISPATCH UNITS ---
+            let activeDispatches = 0;
+
+            if (data.dispatch_fire === true || data.dispatch_fire === "true") {
+                activeDispatches++;
+                dispatchDiv.innerHTML += `
+                    <div class="alert-box fire-border">
+                        <div class="alert-title"><span>🚒 FIRE SERVICE</span><span class="status-tag">En Route</span></div>
+                        <div style="font-size:0.85rem; color:#8b949e;">Unit deployed to Floor ${data.incident_floor || 'N/A'}</div>
+                    </div>`;
+            }
+
+            if (data.dispatch_police === true || data.dispatch_police === "true") {
+                activeDispatches++;
+                dispatchDiv.innerHTML += `
+                    <div class="alert-box police-border">
+                        <div class="alert-title"><span>🛡️ POLICE DISPATCH</span><span class="status-tag">Authorized</span></div>
+                        <div style="font-size:0.85rem; color:#8b949e;">Tactical security securing Floor ${data.incident_floor || 'N/A'}</div>
+                    </div>`;
+            }
+
+            if (data.dispatch_medical === true || data.dispatch_medical === "true") {
+                activeDispatches++;
+                dispatchDiv.innerHTML += `
+                    <div class="alert-box medical-border">
+                        <div class="alert-title"><span>🚑 MEDICAL DISPATCH</span><span class="status-tag">Priority</span></div>
+                        <div style="font-size:0.85rem; color:#8b949e;">EMS team responding to medical alerts</div>
+                    </div>`;
+            }
+
+            if (activeDispatches === 0) {
+                dispatchDiv.innerHTML = '<div class="empty-msg">Awaiting manager dispatch authorization...</div>';
+            }
+        }
+    </script>
+</body>
+</html>

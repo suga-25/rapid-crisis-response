@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Security Terminal</title>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #0f172a; color: white; margin: 0; padding: 20px; }
+        .card { background: #1e293b; border-radius: 15px; padding: 20px; border: 1px solid #334155; max-width: 500px; margin: 0 auto; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        .btn-update { background: #2563eb; color: white; }
+        .btn-med { background: #dc2626; color: white; }
+        .active-med { animation: pulse 1s infinite; background: #ff4444 !important; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        label { display: block; font-size: 0.8em; color: #94a3b8; margin-top: 15px; text-align: left; }
+        input, select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 8px; margin-top: 5px; box-sizing: border-box; }
+        
+        /* New class to hide elements */
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2 style="margin-top:0;">🛡️ Staff Terminal</h2>
+        <label>Current Floor Assignment</label>
+        <select id="floorSelect" onchange="syncFloorData()">
+            <option value="1">Floor 1</option>
+            <option value="2">Floor 2</option>
+            <option value="3">Floor 3</option>
+        </select>
+
+        <hr style="border:0; border-top:1px solid #334155; margin:20px 0;">
+
+        <div id="routeSection" class="hidden">
+            <label>Set Safe Exit Route</label>
+            <input type="text" id="safeRoute" placeholder="e.g., Stairwell B" readonly>
+            
+            <label>Identify Blocked Area</label>
+            <input type="text" id="blockedRoute" placeholder="e.g., Main Lift Lobby" readonly>
+            
+            <hr style="border:0; border-top:1px solid #334155; margin:20px 0;">
+        </div>
+        
+        <button id="medBtn" class="btn btn-med" onclick="reportMedical()">Request Medical Assistance</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAdKninhjD3zVfWYCzBIAuyzXNZdXG0Je0",
+            authDomain: "rapidcrisisresponse-b7231.firebaseapp.com",
+            databaseURL: "https://rapidcrisisresponse-b7231-default-rtdb.firebaseio.com",
+            projectId: "rapidcrisisresponse-b7231",
+            appId: "1:103621171944:web:f4bd8389b7e5a62540075d"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function syncFloorData() {
+            const f = document.getElementById('floorSelect').value;
+            const routeSection = document.getElementById('routeSection');
+
+            // Using onValue instead of once so it updates in real-time
+            db.ref(`floors/${f}`).on('value', snap => {
+                const data = snap.val();
+                if(data) {
+                    const safe = data.safe_exit || "";
+                    const blocked = data.blocked_exit || "";
+                    
+                    document.getElementById('safeRoute').value = safe;
+                    document.getElementById('blockedRoute').value = blocked;
+
+                    // If both fields are empty, hide the section. Otherwise, show it.
+                    if (safe === "" && blocked === "") {
+                        routeSection.classList.add('hidden');
+                    } else {
+                        routeSection.classList.remove('hidden');
+                    }
+
+                    if(data.medical_condition === "MEDICAL ACTIVE") {
+                        document.getElementById('medBtn').classList.add('active-med');
+                    } else {
+                        document.getElementById('medBtn').classList.remove('active-med');
+                    }
+                } else {
+                    // Hide if no floor data at all
+                    routeSection.classList.add('hidden');
+                }
+            });
+        }
+
+        function reportMedical() {
+            const f = document.getElementById('floorSelect').value;
+            const btn = document.getElementById('medBtn');
+            const isActive = btn.classList.contains('active-med');
+            
+            // Toggle the state in Firebase
+            db.ref(`floors/${f}`).update({
+                medical_condition: !isActive ? "MEDICAL ACTIVE" : "NONE"
+            });
+        }
+        
+        // Initial sync
+        syncFloorData();
+    </script>
+</body>
+</html>

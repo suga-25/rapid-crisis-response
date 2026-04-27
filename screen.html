@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Public Information Display</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #0f172a;
+    color: white;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.wing-nav {
+    background: #000;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.wing-btn {
+    background: #334155;
+    border: none;
+    color: #94a3b8;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+.wing-btn.active {
+    background: #3b82f6;
+    color: white;
+}
+
+.emergency-banner {
+    background: #fff;
+    color: #b91c1c;
+    padding: 10px;
+    font-weight: 900;
+    font-size: 1.2rem;
+    text-align: center;
+    display: none;
+}
+
+.main-display {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.4s ease;
+    text-align: center;
+}
+
+.main-message {
+    font-size: 6rem;
+    font-weight: 900;
+    margin: 0;
+}
+
+.sub-message {
+    font-size: 2.2rem;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+.arrow {
+    font-size: 8rem;
+    margin-top: 20px;
+}
+
+.state-secure  { background-color: #0f172a; }
+.state-safe    { background-color: #064e3b; }
+.state-blocked { background-color: #7f1d1d; }
+
+/* CENTER INFO PANEL */
+.center-info {
+    margin-top: 25px;
+    padding: 20px 30px;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.3);
+    display: none;
+}
+.center-info h3 {
+    margin: 0 0 10px;
+    font-size: 1.5rem;
+}
+.blocked {
+    color: #ef4444;
+    font-size: 1.6rem;
+    font-weight: 900;
+}
+.safe {
+    color: #22c55e;
+    font-size: 1.6rem;
+    font-weight: 900;
+}
+</style>
+</head>
+
+<body>
+
+<div class="wing-nav">
+    <button class="wing-btn" onclick="setLocalWing('F1W',this)">F1 W</button>
+    <button class="wing-btn" onclick="setLocalWing('F1C',this)">F1 C</button>
+    <button class="wing-btn" onclick="setLocalWing('F1E',this)">F1 E</button>
+    <button class="wing-btn" onclick="setLocalWing('F2W',this)">F2 W</button>
+    <button class="wing-btn" onclick="setLocalWing('F2C',this)">F2 C</button>
+    <button class="wing-btn" onclick="setLocalWing('F2E',this)">F2 E</button>
+    <button class="wing-btn active" onclick="setLocalWing('F3W',this)">F3 W</button>
+    <button class="wing-btn" onclick="setLocalWing('F3C',this)">F3 C</button>
+    <button class="wing-btn" onclick="setLocalWing('F3E',this)">F3 E</button>
+</div>
+
+<div class="emergency-banner" id="banner"></div>
+
+<div class="main-display state-secure" id="displayArea">
+    <h1 class="main-message" id="mainMsg">SECURE</h1>
+    <div class="sub-message" id="subMsg">All systems normal</div>
+    <div class="arrow" id="arrowIcon"></div>
+
+    <!-- CENTER EXTRA INFO -->
+    <div class="center-info" id="centerInfo">
+        <h3>ROUTE STATUS</h3>
+        <div class="blocked">BLOCKED: <span id="blockedText"></span></div>
+        <div class="safe">SAFE: <span id="safeText"></span></div>
+    </div>
+</div>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyAdKninhjD3zVfWYCzBIAuyzXNZdXG0Je0",
+    authDomain: "rapidcrisisresponse-b7231.firebaseapp.com",
+    databaseURL: "https://rapidcrisisresponse-b7231-default-rtdb.firebaseio.com",
+    projectId: "rapidcrisisresponse-b7231",
+    appId: "1:103621171944:web:f4bd8389b7e5a62540075d"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let currentWing = "F3W";
+
+function setLocalWing(wing, btn) {
+    document.querySelectorAll('.wing-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentWing = wing;
+    db.ref('/').once('value', snap => updateUI(snap.val()));
+}
+
+function updateUI(data) {
+    const display = document.getElementById("displayArea");
+    const banner = document.getElementById("banner");
+    const mainMsg = document.getElementById("mainMsg");
+    const subMsg = document.getElementById("subMsg");
+    const arrow = document.getElementById("arrowIcon");
+    const centerInfo = document.getElementById("centerInfo");
+
+    centerInfo.style.display = "none";
+
+    if (!data || !data.active) {
+        banner.style.display = "none";
+        display.className = "main-display state-secure";
+        mainMsg.innerText = "SECURE";
+        subMsg.innerText = "All systems normal";
+        arrow.innerText = "";
+        return;
+    }
+
+    banner.style.display = "block";
+    banner.innerText = `🚨 EMERGENCY ON FLOOR ${data.incident_floor} 🚨`;
+
+    const wingType = currentWing.charAt(2);   // W/C/E
+    const floorNum = currentWing.charAt(1);  // 1/2/3
+
+    const floorData = data.floors[floorNum];
+    const safeExit = floorData.safe_exit;
+    const blockedExit = floorData.blocked_exit || "";
+
+    const wingMap = { W: "West", C: "Center", E: "East" };
+    const currentWingName = wingMap[wingType];
+
+    // 🔥 CENTER SPECIAL LOGIC
+    if (wingType === "C") {
+        display.className = "main-display state-blocked";
+        mainMsg.innerText = "ROUTE RESTRICTED";
+        subMsg.innerText = "FOLLOW SAFE ROUTE";
+        arrow.innerText = "↓";
+
+        centerInfo.style.display = "block";
+        document.getElementById("blockedText").innerText = blockedExit.toUpperCase();
+        document.getElementById("safeText").innerText = safeExit.toUpperCase();
+        return;
+    }
+
+    // NORMAL W/E LOGIC
+    if (blockedExit.includes(currentWingName)) {
+        display.className = "main-display state-blocked";
+        mainMsg.innerText = "EXIT BLOCKED";
+        subMsg.innerText = `PROCEED VIA ${safeExit.toUpperCase()}`;
+        arrow.innerText = "←";
+    } else {
+        display.className = "main-display state-safe";
+        mainMsg.innerText = "SAFE TO EXIT";
+        subMsg.innerText = `PROCEED VIA ${safeExit.toUpperCase()}`;
+        arrow.innerText = "↓";
+    }
+}
+
+db.ref('/').on('value', snap => updateUI(snap.val()));
+</script>
+
+</body>
+</html>

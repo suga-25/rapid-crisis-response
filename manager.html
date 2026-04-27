@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incident Command Center | Manager Dashboard</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #0f172a; color: white; text-align: center; padding: 20px; margin: 0; }
+        .panel { background: #1a1a1a; padding: 25px; border-radius: 15px; max-width: 600px; margin: 0 auto; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        /* Map Styles */
+        .map-container { margin-bottom: 20px; border-radius: 12px; overflow: hidden; border: 1px solid #444; background: #000; }
+        .map-pulse {
+            height: 6px;
+            width: 6px;
+            background: #3fb950;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            animation: map-pulse-anim 2s infinite;
+        }
+        @keyframes map-pulse-anim {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        .verification-box { background: #262626; padding: 15px; border-radius: 10px; margin: 20px 0; text-align: left; border-left: 5px solid #ffa000; }
+        .verify-item { display: flex; align-items: center; background: #333; padding: 12px; margin: 8px 0; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        .verify-item:hover { background: #444; }
+        .verify-item input { margin-right: 15px; transform: scale(1.2); cursor: pointer; }
+        
+        .status-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 20px 0; }
+        .status-card { background: #0f172a; padding: 15px; border-radius: 10px; border: 1px solid #475569; position: relative; font-size: 0.9em; }
+        
+        .stat-evac { color: #f87171; font-weight: bold; animation: pulse 1.5s infinite; }
+        .staff-alert { display: none; margin-top: 8px; font-size: 0.7em; padding: 4px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
+        .alert-medical { display: block; background: #ef4444; color: white; animation: pulse 1s infinite; }
+        
+        .btn-alert { background: #e11d48; color: white; border: none; padding: 15px 30px; border-radius: 8px; font-size: 1.1em; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; opacity: 0.3; pointer-events: none; transition: 0.3s; letter-spacing: 1px; }
+        .btn-alert.enabled { opacity: 1; pointer-events: auto; box-shadow: 0 0 20px rgba(225, 29, 72, 0.5); }
+        
+        .rescue-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; display: none; }
+        .btn-rescue { border: none; padding: 12px 5px; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; font-size: 0.75em; transition: 0.2s; }
+        .btn-rescue:active { transform: scale(0.95); }
+        .btn-fire { background: #dc2626; }
+        .btn-med { background: #2563eb; }
+        .btn-pol { background: #f59e0b; color: black; }
+
+        .btn-reset { background: transparent; color: #64748b; border: 1px solid #334155; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-top: 25px; font-size: 0.8em; font-weight: bold; }
+        .btn-reset:hover { border-color: #f87171; color: #f87171; }
+
+        select { width: 100%; padding: 12px; border-radius: 5px; background: #333; color: white; border: 1px solid #444; margin-top: 10px; font-size: 1em; cursor: pointer; }
+        
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .header-tag { font-size: 0.75em; text-transform: uppercase; color: #888; letter-spacing: 1.5px; display: block; margin-bottom: 5px; }
+        #count-label { float: right; color: #ffa000; font-size: 0.8rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="panel">
+        <span class="header-tag">Google Cloud Console | Safety Operations</span>
+        <h2 style="margin-top: 5px; color: #f1f5f9;">🚨Crisis Activation</h2>
+
+        <div style="background: #161b22; border: 2px solid #58a6ff; border-radius: 8px; padding: 12px; margin-bottom: 20px; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span style="color: #58a6ff; font-size: 0.75rem; font-weight: bold; letter-spacing: 1px;">🛰️ LIVE SATELLITE FEED | SITE ALPHA</span>
+                <span style="color: #8b949e; font-size: 0.7rem; font-family: monospace;">LAT: 8.7139° N | LON: 77.7567° E</span>
+            </div>
+            
+            <div style="position: relative; width: 100%; height: 200px; border-radius: 4px; overflow: hidden; border: 1px solid #30363d;">
+                <iframe 
+                    src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d15762.66874845479!2d77.7567!3d8.7139!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1714210000000!5m2!1sen!2sin" 
+                    width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy">
+                </iframe>
+
+                <div style="position: absolute; bottom: 10px; left: 10px; background: rgba(13, 17, 23, 0.8); padding: 5px 10px; border-radius: 4px; border: 1px solid #3fb950; pointer-events: none;">
+                    <div style="color: #3fb950; font-size: 0.65rem; display: flex; align-items: center;">
+                        <span class="map-pulse"></span>
+                        MAP SECURE: ALL GATES ACTIVE
+                    </div>
+                </div>
+            </div>
+            <div style="background: #222; padding: 5px; font-size: 0.75em; color: #4ade80; margin-top: 5px; border-radius: 4px;">
+                LIVE LOCATION: SITE ALPHA | ACCESS: NORTH GATE
+            </div>
+        </div>
+
+        <div class="verification-box">
+            <span id="count-label">0/2 Confirmed</span>
+            <span class="header-tag">1. Verification Protocol</span>
+            <label class="verify-item"><input type="checkbox" class="verify-check" onclick="checkVerification()"> Smoke Sensor Triggered</label>
+            <label class="verify-item"><input type="checkbox" class="verify-check" onclick="checkboxChange(); checkVerification()"> Visual Confirmation (CCTV)</label>
+            <label class="verify-item"><input type="checkbox" class="verify-check" onclick="checkVerification()"> On-Site Security Verified</label>
+        </div>
+
+        <div style="text-align: left; margin-bottom: 20px;">
+            <span class="header-tag">2. Select Origin Floor</span>
+            <select id="floorSelect">
+                <option value="1">Floor 1</option>
+                <option value="2">Floor 2</option>
+                <option value="3">Floor 3</option>
+            </select>
+        </div>
+
+        <button id="alertBtn" class="btn-alert" onclick="triggerAlert()">WAITING FOR VERIFICATION</button>
+
+        <div id="rescueSection" class="rescue-grid">
+            <button class="btn-rescue btn-fire" onclick="approveRescue('fire')">NOTIFY FIRE DEPT.</button>
+            <button class="btn-rescue btn-med" onclick="approveRescue('medical')">REQUEST MED. ASSISTANCE</button>
+            <button class="btn-rescue btn-pol" onclick="approveRescue('police')">NOTIFY POLICE</button>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #333; margin: 25px 0;">
+        <span class="header-tag">Building Real-Time Status</span>
+        <div class="status-grid">
+            <div class="status-card">F3<br><span id="stat_3" style="color:#64748b;">STABLE</span><div id="staff_3" class="staff-alert"></div></div>
+            <div class="status-card">F2<br><span id="stat_2" style="color:#64748b;">STABLE</span><div id="staff_2" class="staff-alert"></div></div>
+            <div class="status-card">F1<br><span id="stat_1" style="color:#64748b;">STABLE</span><div id="staff_1" class="staff-alert"></div></div>
+        </div>
+
+        <button class="btn-reset" onclick="resetSystem()">System Reset</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAdKninhjD3zVfWYCzBIAuyzXNZdXG0Je0",
+            authDomain: "rapidcrisisresponse-b7231.firebaseapp.com",
+            databaseURL: "https://rapidcrisisresponse-b7231-default-rtdb.firebaseio.com",
+            projectId: "rapidcrisisresponse-b7231",
+            appId: "1:103621171944:web:f4bd8389b7e5a62540075d"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function checkVerification() {
+            const checks = document.querySelectorAll('.verify-check');
+            const btn = document.getElementById('alertBtn');
+            const checkedCount = Array.from(checks).filter(c => c.checked).length;
+            
+            document.getElementById('count-label').innerText = `${checkedCount}/2 Confirmed`;
+            
+            if (checkedCount >= 2) {
+                btn.classList.add('enabled');
+                btn.innerText = "ACTIVATE GLOBAL EMERGENCY";
+            } else {
+                btn.classList.remove('enabled');
+                btn.innerText = "WAITING FOR VERIFICATION";
+            }
+        }
+
+        function triggerAlert() {
+            const f = document.getElementById('floorSelect').value;
+            const updates = { 
+                active: true, 
+                incident_floor: f, 
+                incident_type: "GENERAL EVACUATION", 
+                status_message: "Verified evacuation in progress."
+            };
+            [1, 2, 3].forEach(num => {
+                updates[`floors/${num}/status`] = (num == f) ? "Evacuating" : "Standby";
+            });
+            db.ref('/').update(updates).then(() => {
+                document.getElementById('rescueSection').style.display = 'grid';
+                document.getElementById('alertBtn').innerText = "ALERT ACTIVE";
+            });
+        }
+
+        function approveRescue(type) {
+            const updateObj = {};
+            updateObj[`dispatch_${type}`] = true; 
+            
+            db.ref('/').update(updateObj).then(() => {
+                alert(type.toUpperCase() + " Dispatch Authorized.");
+            });
+        }
+
+        function resetSystem() {
+            if(!confirm("Are you sure you want to clear all active alerts?")) return;
+            
+            const updates = { 
+                active: false, 
+                incident_type: "", 
+                status_message: "", 
+                incident_floor: "",
+                dispatch_fire: false,
+                dispatch_medical: false,
+                dispatch_police: false
+            };
+
+            [1, 2, 3].forEach(f => { 
+                updates[`floors/${f}/status`] = "Normal";
+                updates[`floors/${f}/medical_condition`] = "NONE";
+            });
+
+            db.ref('/').update(updates).then(() => {
+                location.reload();
+            });
+        }
+
+        db.ref('floors').on('value', (snap) => {
+            const floors = snap.val();
+            if (!floors) return;
+            [1, 2, 3].forEach(f => {
+                const d = floors[f];
+                if (!d) return;
+                const sEl = document.getElementById(`stat_${f}`);
+                const staffAlert = document.getElementById(`staff_${f}`);
+                
+                sEl.innerText = (d.status || "Normal").toUpperCase();
+                sEl.className = d.status === "Normal" ? "" : "stat-evac";
+
+                if (d.medical_condition === "MEDICAL ACTIVE") {
+                    staffAlert.innerText = "🚑 MED NEEDED";
+                    staffAlert.className = "staff-alert alert-medical";
+                    staffAlert.style.display = "block";
+                } else {
+                    staffAlert.style.display = "none";
+                }
+            });
+        });
+    </script>
+</body>
+</html>
