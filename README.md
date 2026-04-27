@@ -44,7 +44,7 @@ Integrated via the Embed API to provide:
 ```mermaid
 graph TD
     A[Manager Dashboard] -->|Write Event| B(Firebase Realtime DB)
-    B -->|Sync Status| C[Guest/Staff View]
+    B   -->|Sync Status| C[Guest/Staff View]
     B -->|Sync Status| D[Public Screen]
     B -->|Sync Status| E[Rescue Tactical View]
     C -->|Report Incident| B
