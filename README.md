@@ -41,10 +41,41 @@ Integrated via the Embed API to provide:
 
 ## 🧠 Technical Architecture
 
-```mermaid
 graph TD
     A[Manager Dashboard] -->|Write Event| B(Firebase Realtime DB)
-    B   -->|Sync Status| C[Guest/Staff View]
+    B -->|Sync Status| C[Guest/Staff View]
     B -->|Sync Status| D[Public Screen]
     B -->|Sync Status| E[Rescue Tactical View]
     C -->|Report Incident| B
+
+## 🚀 Live Prototype
+The system is fully deployed on Google Firebase. You can access the different modules via the links below:
+
+### 🔗 Hosted Application:
+* **Manager Dashboard:** [Launch Manager](https://rapidcrisisresponse-b7231.web.app/manager.html)
+* **Staff Interface:** [Launch Staff](https://rapidcrisisresponse-b7231.web.app/staff.html)
+* **Security Terminal:** [Launch Security](https://rapidcrisisresponse-b7231.web.app/security.html)
+* **Rescue Team View:** [Launch Rescue](https://rapidcrisisresponse-b7231.web.app/rescue.html)
+* **Guest Reporter:** [Launch Guest](https://rapidcrisisresponse-b7231.web.app/guest.html)
+* **Public Display Screen:** [Launch Screen](https://rapidcrisisresponse-b7231.web.app/screen.html)
+
+---
+
+📁 Project Structure
+manager.html — Crisis activation and verification center.
+
+staff.html — Incident reporting and medical alerts.
+
+screen.html — Public-facing digital signage.
+
+rescue.html — External agency tactical overview.
+
+security.html — Building-wide status monitor.
+
+🌱 Future Scope
+AI Integration: Using Gemini to calculate optimal evacuation paths based on crowd density.
+
+IoT Connectivity: Automatic triggers via smoke and heat sensors.
+
+Multilingual Support: Instant translation of safety instructions for diverse public spaces.
+
