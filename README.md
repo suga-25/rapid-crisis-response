@@ -48,7 +48,7 @@ graph TD
     B -->|Sync Status| D[Public Screen]
     B -->|Sync Status| E[Rescue Tactical View]
     C -->|Report Incident| B
-
+```
 
 ---
 
