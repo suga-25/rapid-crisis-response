@@ -49,8 +49,6 @@ graph TD
     B -->|Sync Status| E[Rescue Tactical View]
     C -->|Report Incident| B
 
----
-
 ## 🚀 Live Prototype
 The system is fully deployed on Google Firebase. You can access the different modules via the links below:
 
