@@ -41,6 +41,7 @@ Integrated via the Embed API to provide:
 
 ## 🧠 Technical Architecture
 
+```mermaid
 graph TD
     A[Manager Dashboard] -->|Write Event| B(Firebase Realtime DB)
     B -->|Sync Status| C[Guest/Staff View]
@@ -72,10 +73,11 @@ rescue.html — External agency tactical overview.
 
 security.html — Building-wide status monitor.
 
+guest.html — Public reporting interface.
+
 🌱 Future Scope
-AI Integration: Using Gemini to calculate optimal evacuation paths based on crowd density.
+AI Integration: Using Gemini to calculate optimal evacuation paths based on real-time crowd density and obstacle data.
 
-IoT Connectivity: Automatic triggers via smoke and heat sensors.
+IoT Connectivity: Implementing automatic crisis triggers via smart smoke, heat, and structural vibration sensors.
 
-Multilingual Support: Instant translation of safety instructions for diverse public spaces.
-
+Multilingual Support: Instant AI-driven translation of safety instructions to assist diverse populations in public spaces.
