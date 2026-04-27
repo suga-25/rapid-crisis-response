@@ -49,3 +49,33 @@ graph TD
     B -->|Sync Status| E[Rescue Tactical View]
     C -->|Report Incident| B
 
+
+---
+
+## 🚀 Live Prototype
+The system is fully deployed on Google Firebase. You can access the different modules via the links below:
+
+### 🔗 Hosted Application:
+* **Manager Dashboard:** [Launch Manager](https://rapidcrisisresponse-b7231.web.app/manager.html)
+* **Staff Interface:** [Launch Staff](https://rapidcrisisresponse-b7231.web.app/staff.html)
+* **Security Terminal:** [Launch Security](https://rapidcrisisresponse-b7231.web.app/security.html)
+* **Rescue Team View:** [Launch Rescue](https://rapidcrisisresponse-b7231.web.app/rescue.html)
+* **Guest Reporter:** [Launch Guest](https://rapidcrisisresponse-b7231.web.app/guest.html)
+* **Public Display Screen:** [Launch Screen](https://rapidcrisisresponse-b7231.web.app/screen.html)
+
+---
+
+## 📁 Project Structure
+* **`manager.html`** — Crisis activation and verification center.
+* **`staff.html`** — Incident reporting and medical alerts.
+* **`screen.html`** — Public-facing digital signage.
+* **`rescue.html`** — External agency tactical overview.
+* **`security.html`** — Building-wide status monitor.
+* **`guest.html`** — Public reporting interface.
+
+---
+
+## 🌱 Future Scope
+* **AI Integration:** Using **Gemini** to calculate optimal evacuation paths based on real-time crowd density and obstacle data.
+* **IoT Connectivity:** Implementing automatic crisis triggers via smart smoke, heat, and structural vibration sensors.
+* **Multilingual Support:** Instant AI-driven translation of safety instructions to assist diverse populations in public spaces.
