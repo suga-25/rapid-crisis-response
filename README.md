@@ -41,7 +41,6 @@ Integrated via the Embed API to provide:
 
 ## 🧠 Technical Architecture
 
-```mermaid
 graph TD
     A[Manager Dashboard] -->|Write Event| B(Firebase Realtime DB)
     B -->|Sync Status| C[Guest/Staff View]
@@ -62,22 +61,21 @@ The system is fully deployed on Google Firebase. You can access the different mo
 
 ---
 
-📁 Project Structure
-manager.html — Crisis activation and verification center.
+---
 
-staff.html — Incident reporting and medical alerts.
+## 📁 Project Structure
+* **`manager.html`** — Crisis activation and verification center.
+* **`staff.html`** — Incident reporting and medical alerts.
+* **`screen.html`** — Public-facing digital signage.
+* **`rescue.html`** — External agency tactical overview.
+* **`security.html`** — Building-wide status monitor.
+* **`guest.html`** — Public reporting interface.
 
-screen.html — Public-facing digital signage.
+---
 
-rescue.html — External agency tactical overview.
+## 🌱 Future Scope
+* **AI Integration:** Using **Gemini** to calculate optimal evacuation paths based on real-time crowd density and obstacle data.
+* **IoT Connectivity:** Implementing automatic crisis triggers via smart smoke, heat, and structural vibration sensors.
+* **Multilingual Support:** Instant AI-driven translation of safety instructions to assist diverse populations in public spaces.
 
-security.html — Building-wide status monitor.
-
-guest.html — Public reporting interface.
-
-🌱 Future Scope
-AI Integration: Using Gemini to calculate optimal evacuation paths based on real-time crowd density and obstacle data.
-
-IoT Connectivity: Implementing automatic crisis triggers via smart smoke, heat, and structural vibration sensors.
-
-Multilingual Support: Instant AI-driven translation of safety instructions to assist diverse populations in public spaces.
+---
